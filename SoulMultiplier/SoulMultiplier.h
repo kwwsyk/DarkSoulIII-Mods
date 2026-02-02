@@ -27,6 +27,7 @@ uintptr_t GameDataMan;
 
 __forceinline bool TryRead32(const uint32_t* p, uint32_t& out);
 bool ReadLevelPointer();
+bool ReadPtrSafe(void* p, void* out, SIZE_T sz);
 
 extern "C" {
     void SoulMultiplier();
@@ -40,7 +41,8 @@ extern "C" {
         if (!level) {
             return base;
         }
-        int lvl = *level;
+        int lvl = 0;
+        ReadPtrSafe(level, &lvl, sizeof lvl);
         return base + level_mul * (lvl > level_base ? lvl - level_base : 0);
     }
 }
@@ -125,7 +127,9 @@ bool ResolvePtrChain(uintptr_t base, std::vector<uintptr_t> offsets, uintptr_t& 
     for (auto off : offsets) {
         uintptr_t next = 0;
         if (!ReadPtrSafe((uintptr_t*)(addr), &next, sizeof next)) return false;
+#ifdef _DEBUG
         logUpdate(addr, next, off);
+#endif
         addr = next + off;
     }
     out = addr;
@@ -134,16 +138,12 @@ bool ResolvePtrChain(uintptr_t base, std::vector<uintptr_t> offsets, uintptr_t& 
 
 //return false for exception
 bool ReadLevelPointer() {
-    try{
-        uintptr_t pLevel = 0;
-        if (!ResolvePtrChain(GameDataMan, { 0x10,0x70 }, pLevel)) return 1;//when the pointer has not been initialized yet, it would parse wrong
+    uintptr_t pLevel = 0;
+    if (!ResolvePtrChain(GameDataMan, { 0x10,0x70 }, pLevel)) return 1;//when the pointer has not been initialized yet, it would parse wrong
 
-        if (!pLevel) return 0;
-        level = (uint32_t*)pLevel;
-        return true;
-    }catch(...) {
-		return false;
-	}
+    if (!pLevel) return 0;
+    level = (uint32_t*)pLevel;
+    return true;
 }
 
 [[noreturn]] static void FatalExit(const std::wstring& msg, DWORD code) {

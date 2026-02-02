@@ -34,9 +34,10 @@ static bool installHook() {
 
 DWORD WINAPI MainThread(LPVOID lpParam)
 {
+#ifdef _DEBUG
     InstallCrashPopupAndExit();
+#endif
     Log("Activating SoulMultiplier");
-    //AddVectoredExceptionHandler(1, Veh);
 
     readConfig();
 
@@ -46,7 +47,7 @@ DWORD WINAPI MainThread(LPVOID lpParam)
     }
 
     while (!level) {
-        if (!ReadLevelPointer()) {
+        if (!ReadLevelPointer()) {//this means exception occurred instead of failed to read when level data has not been initialized yet.
             Log("Error reading level pointer, the multiplier will only depend on base.");
             return 1;
         }
